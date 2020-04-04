@@ -3,9 +3,11 @@
 #include <windows.h>
 #endif
 #include <stdarg.h>
+#include <getopt.h>
 
 #include <jmraid.h>
 
+int g_print_json = 0;
 int g_print_indent = 0;
 
 const char *get_raid_state_text(uint8_t raid_state)
@@ -504,18 +506,37 @@ void check_disk(const char *disk_name)
 int main(int argc, char *argv[])
 {
 	int disk_number;
+	int c;
+	char disk_name[32];
+	while ((c = getopt(argc, argv, "j")) != -1) {
+		switch (c) {
+		case 'j':
+			g_print_json = 1;
+			break;
+		case '?':
+			break;
+		default:
+			fprintf(stderr, "?? getopt returned character code 0%o ??\n", c);
+		}
+	}
 
 	print("JMicron RAID info\n");
 
-	for (disk_number = 0; disk_number < 16; disk_number++)
-	{
-		char disk_name[32];
+	if (optind < argc) {
+		root = json_object_new_object();
+		strncpy(disk_name, argv[optind++], 32);
+		check_disk(root, disk_name);
+	}
+	else {
+		for (disk_number = 0; disk_number < 16; disk_number++)
+		{
 #ifdef _WIN32
-		sprintf(disk_name, "\\\\.\\PhysicalDrive%d", disk_number + 1);
+			sprintf(disk_name, "\\\\.\\PhysicalDrive%d", disk_number + 1);
 #else
-		sprintf(disk_name, "/dev/sd%c", 'a' + disk_number);
+			sprintf(disk_name, "/dev/sd%c", 'a' + disk_number);
 #endif
-		check_disk(disk_name);
+			check_disk(disk_name);
+		}
 	}
 
 	return 0;
