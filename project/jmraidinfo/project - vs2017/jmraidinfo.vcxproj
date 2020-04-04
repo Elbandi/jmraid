@@ -148,11 +148,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\lib\src\disk.c" />
+    <ClCompile Include="..\..\..\lib\src\getopt.c" />
     <ClCompile Include="..\..\..\lib\src\jmraid.c" />
     <ClCompile Include="..\src\main.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\lib\inc\disk.h" />
+    <ClInclude Include="..\..\..\lib\inc\getopt.h" />
     <ClInclude Include="..\..\..\lib\inc\jmraid.h" />
     <ClInclude Include="..\..\..\lib\inc\types.h" />
   </ItemGroup>
