@@ -764,6 +764,8 @@ bool jmraid_send_handshake(struct jmraid *jmraid, uint32_t magic)
 	return true;
 }
 
+#define min(X,Y) (((X) < (Y)) ? (X) : (Y))
+
 bool jmraid_invoke_command(struct jmraid *jmraid, const uint8_t *data_in, uint32_t size_in, uint8_t *data_out, uint32_t size_out)
 {
 	uint8_t sector_data[SECTOR_SIZE];

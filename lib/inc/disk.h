@@ -1,7 +1,11 @@
 #ifndef _DISK_H_
 #define _DISK_H_
 
+#include <stdio.h>
+#include <string.h>
 #include <types.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -11,9 +15,7 @@
 
 struct disk
 {
-#ifdef _WIN32
 	HANDLE handle;
-#endif
 };
 
 void disk_init(struct disk *disk);

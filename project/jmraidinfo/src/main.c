@@ -1,5 +1,8 @@
 #include <stdio.h>
+#ifdef _WIN32
 #include <windows.h>
+#endif
+#include <stdarg.h>
 
 #include <jmraid.h>
 
@@ -504,10 +507,14 @@ int main(int argc, char *argv[])
 
 	print("JMicron RAID info\n");
 
-	for (disk_number = 1; disk_number < 16; disk_number++)
+	for (disk_number = 0; disk_number < 16; disk_number++)
 	{
 		char disk_name[32];
-		sprintf(disk_name, "\\\\.\\PhysicalDrive%d", disk_number);
+#ifdef _WIN32
+		sprintf(disk_name, "\\\\.\\PhysicalDrive%d", disk_number + 1);
+#else
+		sprintf(disk_name, "/dev/sd%c", 'a' + disk_number);
+#endif
 		check_disk(disk_name);
 	}
 
