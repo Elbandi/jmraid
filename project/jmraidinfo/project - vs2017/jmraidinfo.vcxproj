@@ -23,7 +23,7 @@
     <ProjectGuid>{DBDE9B1F-8C4E-4E75-9893-56B41CA40A88}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>jmraidinfo</RootNamespace>
-    <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -161,4 +161,24 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <PropertyGroup>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == ''">$(MSBuildThisFileDirectory)..\3rdParty\Windows\vcpkg</VcpkgRootDir>
+    <VcpkgExe>$(VcpkgRootDir)\vcpkg.exe</VcpkgExe>
+  </PropertyGroup>
+  <Target Name="CreateFolders" BeforeTargets="InstallVcpkg" Condition="!Exists($(VcpkgRootDir))">
+    <MakeDir Directories="$(VcpkgRootDir)" />
+    <MakeDir Directories="../../vcpkg_ports" />
+  </Target>
+  <Target Name="InstallVcpkg" BeforeTargets="Build3rdPartyLibraries" DependsOnTargets="CreateFolders">
+    <Exec Command="git clone https://github.com/microsoft/vcpkg ." WorkingDirectory="$(VcpkgRootDir)" ConsoleToMSBuild="true" Condition="!Exists($(VcpkgExe))" />
+    <Exec Command="git pull" WorkingDirectory="$(VcpkgRootDir)" ConsoleToMSBuild="true" />
+    <Exec Command="bootstrap-vcpkg.bat" WorkingDirectory="$(VcpkgRootDir)" ConsoleToMSBuild="true" />
+  </Target>
+  <Target Name="Build3rdPartyLibraries" BeforeTargets="ClCompile" DependsOnTargets="InstallVcpkg" AfterTargets="InstallVcpkg">
+    <ItemGroup>
+      <VcpkgItem Include="json-c:x64-windows-static" />
+    </ItemGroup>
+    <Exec Command="vcpkg.exe install %(VcpkgItem.Identity) --overlay-ports=../../vcpkg_ports" WorkingDirectory="$(VcpkgRootDir)" ConsoleToMSBuild="true" />
+    <Exec Command="vcpkg.exe upgrade --no-dry-run --overlay-ports=../../vcpkg_ports" WorkingDirectory="$(VcpkgRootDir)" ConsoleToMSBuild="true" />
+  </Target>
 </Project>

@@ -4,6 +4,7 @@
 #endif
 #include <stdarg.h>
 #include <getopt.h>
+#include <json-c/json.h>
 
 #include <jmraid.h>
 
@@ -221,6 +222,20 @@ void print_chip_info(const struct jmraid_chip_info *info)
 	print("Serial number    = %d\n", info->serial_number);
 }
 
+void add_chip_info(json_object* parent, const struct jmraid_chip_info* info)
+{
+	json_object* obj = json_object_new_object();
+	char str[64];
+
+	sprintf(str, "%02d.%02d.%02d.%02d", info->firmware_version[3], info->firmware_version[2], info->firmware_version[1], info->firmware_version[0]);
+	json_object_object_add(obj, "firmware_version", json_object_new_string(str));
+	json_object_object_add(obj, "manufacturer", json_object_new_string(info->manufacturer));
+	json_object_object_add(obj, "product_name", json_object_new_string(info->product_name));
+	json_object_object_add(obj, "serial_number", json_object_new_int64(info->serial_number));
+	json_object_object_add(parent, "chip_info", obj);
+}
+
+
 void print_sata_info(const struct jmraid_sata_info *info)
 {
 	int i;
@@ -254,6 +269,35 @@ void print_sata_info(const struct jmraid_sata_info *info)
 	}
 }
 
+void add_sata_info(json_object* parent, const struct jmraid_sata_info* info)
+{
+	int i;
+	json_object* arr = json_object_new_array();
+	for (i = 0; i < 5; i++)
+	{
+		const struct jmraid_sata_info_item* item = &info->item[i];
+		json_object* obj = json_object_new_object();
+		json_object_object_add(obj, "port", json_object_new_int(item->port));
+		json_object_object_add(obj, "type", json_object_new_int(item->port_type));
+		json_object_object_add(obj, "type_str", json_object_new_string(get_sata_port_type_text(item->port_type)));
+		if ((item->port_type == 0x01) || (item->port_type == 0x02))
+		{
+			json_object_object_add(obj, "model_name", json_object_new_string(item->model_name));
+			json_object_object_add(obj, "serial_number", json_object_new_string(item->serial_number));
+			json_object_object_add(obj, "capacity", json_object_new_int64(item->capacity));
+			json_object_object_add(obj, "port_speed", json_object_new_int(item->port_speed));
+			json_object_object_add(obj, "port_speed_str", json_object_new_string(get_sata_port_speed_text(item->port_speed)));
+			json_object_object_add(obj, "page_0_state", json_object_new_int(item->page_0_state));
+			json_object_object_add(obj, "page_0_state_str", json_object_new_string(get_sata_page_state_text(item->page_0_state)));
+			json_object_object_add(obj, "raid_index", json_object_new_int(item->page_0_raid_index));
+			json_object_object_add(obj, "raid_member_index", json_object_new_int(item->page_0_raid_member_index));
+		}
+		json_object_array_add(arr, obj);
+	}
+	json_object_object_add(parent, "sata_info", arr);
+}
+
+
 void print_sata_port_info(const struct jmraid_sata_port_info *info)
 {
 	if ((info->port_type == 0x01) || (info->port_type == 0x02))
@@ -273,6 +317,27 @@ void print_sata_port_info(const struct jmraid_sata_port_info *info)
 	{
 		print("Port type = %d (%s)\n", info->port_type, get_sata_port_type_text(info->port_type));
 	}
+}
+
+void add_sata_port_info(json_object* parent, const struct jmraid_sata_port_info* info)
+{
+	json_object* obj = json_object_new_object();
+	json_object_object_add(obj, "port", json_object_new_int(info->port));
+	json_object_object_add(obj, "type", json_object_new_int(info->port_type));
+	json_object_object_add(obj, "type_str", json_object_new_string(get_sata_port_type_text(info->port_type)));
+	if ((info->port_type == 0x01) || (info->port_type == 0x02))
+	{
+		json_object_object_add(obj, "model_name", json_object_new_string(info->model_name));
+		json_object_object_add(obj, "serial_number", json_object_new_string(info->serial_number));
+		json_object_object_add(obj, "firmware_version", json_object_new_string(info->firmware_version));
+		json_object_object_add(obj, "capacity", json_object_new_int64(info->capacity));
+		json_object_object_add(obj, "capacity_used", json_object_new_int64(info->capacity_used));
+		json_object_object_add(obj, "page_0_state", json_object_new_int(info->page_0_state));
+		json_object_object_add(obj, "page_0_state_str", json_object_new_string(get_sata_page_state_text(info->page_0_state)));
+		json_object_object_add(obj, "raid_index", json_object_new_int(info->page_0_raid_index));
+		json_object_object_add(obj, "raid_member_index", json_object_new_int(info->page_0_raid_member_index));
+	}
+	json_object_object_add(parent, "sata_port_info", obj);
 }
 
 void print_raid_port_info(const struct jmraid_raid_port_info *info)
@@ -313,6 +378,45 @@ void print_raid_port_info(const struct jmraid_raid_port_info *info)
 	}
 }
 
+void add_raid_port_info(json_object* parent, const struct jmraid_raid_port_info* info)
+{
+	json_object* obj = json_object_new_object();
+	json_object_object_add(obj, "port", json_object_new_int(info->port_state));
+	if (info->port_state != 0x00)
+	{
+		int i;
+		json_object* arr = json_object_new_array();
+		json_object_object_add(obj, "model_name", json_object_new_string(info->model_name));
+		json_object_object_add(obj, "serial_number", json_object_new_string(info->serial_number));
+		json_object_object_add(obj, "raid_level", json_object_new_int(info->level));
+		json_object_object_add(obj, "raid_level_str", json_object_new_string(get_raid_level_text(info->level)));
+		json_object_object_add(obj, "capacity", json_object_new_int64(info->capacity));
+		json_object_object_add(obj, "state", json_object_new_int(info->state));
+		json_object_object_add(obj, "state_str", json_object_new_string(get_raid_state_text(info->state)));
+		json_object_object_add(obj, "member_count", json_object_new_int(info->member_count));
+		json_object_object_add(obj, "rebuild_priority", json_object_new_int(info->rebuild_priority));
+		json_object_object_add(obj, "rebuild_priority_str", json_object_new_string(get_raid_rebuild_priority_text(info->rebuild_priority)));
+		json_object_object_add(obj, "standby_timer", json_object_new_int(info->standby_timer));
+		json_object_object_add(obj, "password", json_object_new_string(info->password));
+		json_object_object_add(obj, "rebuild_progress", json_object_new_int64(info->rebuild_progress));
+
+		for (i = 0; i < info->member_count; i++)
+		{
+			const struct jmraid_raid_port_info_member* member = &info->member[i];
+			json_object* obj2 = json_object_new_object();
+			json_object_object_add(obj2, "id", json_object_new_int(i));
+			json_object_object_add(obj2, "ready", json_object_new_int(member->ready));
+			json_object_object_add(obj2, "lba48_support", json_object_new_int(member->lba48_support));
+			json_object_object_add(obj2, "sata_port", json_object_new_int(member->sata_port));
+			json_object_object_add(obj2, "sata_page", json_object_new_int(member->sata_page));
+			json_object_object_add(obj2, "sata_base", json_object_new_int(member->sata_base));
+			json_object_object_add(obj2, "sata_size", json_object_new_int64(member->sata_size));
+			json_object_array_add(arr, obj2);
+		}
+	}
+	json_object_object_add(parent, "raid_port_info", obj);
+}
+
 void print_disk_smart_info(const struct jmraid_disk_smart_info *info)
 {
 	int i;
@@ -326,26 +430,61 @@ void print_disk_smart_info(const struct jmraid_disk_smart_info *info)
 	}
 }
 
-void check_disk(const char *disk_name)
+void add_disk_smart_info(json_object* parent, const struct jmraid_disk_smart_info* info)
+{
+	int i;
+	json_object* arr = json_object_new_array();
+	for (i = 0; i < 30; i++)
+	{
+		const struct jmraid_disk_smart_info_attribute* attr = &info->attribute[i];
+		if (attr->id != 0)
+		{
+			json_object* obj2 = json_object_new_object();
+			json_object_object_add(obj2, "id", json_object_new_int(attr->id));
+			json_object_object_add(obj2, "name", json_object_new_string(get_smart_attribute_name(attr->id)));
+			json_object_object_add(obj2, "flags", json_object_new_int(attr->flags));
+			json_object_object_add(obj2, "threshold", json_object_new_int(attr->threshold));
+			json_object_object_add(obj2, "current_value", json_object_new_int(attr->current_value));
+			json_object_object_add(obj2, "worst_value", json_object_new_int(attr->worst_value));
+			json_object_object_add(obj2, "raw_value", json_object_new_int64(attr->raw_value));
+			json_object_array_add(arr, obj2);
+		}
+	}
+	json_object_object_add(parent, "disk_smart_info", arr);
+}
+
+void check_disk(json_object* parent, const char *disk_name)
 {
 	struct jmraid jmraid;
 
-	print("\n");
-	print("Check \"%s\" ...\n", disk_name);
+	if (!g_print_json) {
+		print("\n");
+		print("Check \"%s\" ...\n", disk_name);
+	}
 	g_print_indent++;
 	jmraid_init(&jmraid);
 	if (!jmraid_open(&jmraid, disk_name, 0))
 	{
-		print("\n");
-		print("jmraid_open failed\n");
+		if (g_print_json) {
+			fprintf(stderr, "%s\n", "jmraid_open failed");
+		}
+		else {
+			print("\n");
+			print("jmraid_open failed\n");
+		}
 	}
 	else
 	{
 		uint32_t vendor_id;
 		if (!jmraid_detect_vendor_id(&jmraid, &vendor_id))
 		{
-			print("\n");
-			print("jmraid_detect_vendor_id failed\n");
+			if (g_print_json) {
+				fprintf(stderr, "%s\n", "jmraid_detect_vendor_id failed");
+			}
+			else {
+				print("\n");
+				print("jmraid_detect_vendor_id failed\n");
+			}
 		}
 		else
 		{
@@ -361,31 +500,47 @@ void check_disk(const char *disk_name)
 
 			jmraid_set_vendor_id(&jmraid, vendor_id);
 
-			print("\n");
-			print("Get chip info ...\n");
-			print("\n");
+			if (!g_print_json) {
+				print("\n");
+				print("Get chip info ...\n");
+				print("\n");
+			}
 			g_print_indent++;
 			if (!jmraid_get_chip_info(&jmraid, &chip_info))
 			{
-				print("jmraid_get_chip_info failed\n");
+				if (g_print_json) {
+					fprintf(stderr, "%s\n", "jmraid_get_chip_info failed");
+				}
+				else {
+					print("jmraid_get_chip_info failed\n");
+				}
 			}
 			else
 			{
-				print_chip_info(&chip_info);
+				if (g_print_json) add_chip_info(parent, &chip_info);
+				else print_chip_info(&chip_info);
 			}
 			g_print_indent--;
 
-			print("\n");
-			print("Get SATA info ...\n");
-			print("\n");
+			if (!g_print_json) {
+				print("\n");
+				print("Get SATA info ...\n");
+				print("\n");
+			}
 			g_print_indent++;
 			if (!jmraid_get_sata_info(&jmraid, &sata_info))
 			{
-				print("jmraid_get_sata_info failed\n");
+				if (g_print_json) {
+					fprintf(stderr, "%s\n", "jmraid_get_sata_info failed");
+				}
+				else {
+					print("jmraid_get_sata_info failed\n");
+				}
 			}
 			else
 			{
-				print_sata_info(&sata_info);
+				if (g_print_json) add_sata_info(parent, &sata_info);
+				else print_sata_info(&sata_info);
 				for (i = 0; i < 5; i++)
 				{
 					is_raid_or_spare_disk[i] = (sata_info.item[i].port_type == 0x02) || ((sata_info.item[i].port_type == 0x01) && (sata_info.item[i].page_0_state == 0x03));
@@ -395,34 +550,50 @@ void check_disk(const char *disk_name)
 
 			for (i = 0; i < 5; i++)
 			{
-				print("\n");
-				print("Get SATA port %d info ...\n", i);
-				print("\n");
+				if (!g_print_json) {
+					print("\n");
+					print("Get SATA port %d info ...\n", i);
+					print("\n");
+				}
 				g_print_indent++;
 				if (!jmraid_get_sata_port_info(&jmraid, i, &sata_port_info))
 				{
-					print("jmraid_get_sata_port_info failed\n");
+					if (g_print_json) {
+						fprintf(stderr, "%s\n", "jmraid_get_sata_port_info failed");
+					}
+					else {
+						print("jmraid_get_sata_port_info failed\n");
+					}
 				}
 				else
 				{
-					print_sata_port_info(&sata_port_info);
+					if (g_print_json) add_sata_port_info(parent, &sata_port_info);
+					else print_sata_port_info(&sata_port_info);
 				}
 				g_print_indent--;
 			}
 
 			for (i = 0; i < 5; i++)
 			{
-				print("\n");
-				print("Get RAID port %d info ...\n", i);
-				print("\n");
+				if (!g_print_json) {
+					print("\n");
+					print("Get RAID port %d info ...\n", i);
+					print("\n");
+				}
 				g_print_indent++;
 				if (!jmraid_get_raid_port_info(&jmraid, i, &raid_port_info))
 				{
-					print("jmraid_get_raid_port_info failed\n");
+					if (g_print_json) {
+						fprintf(stderr, "%s\n", "jmraid_get_raid_port_info failed");
+					}
+					else {
+						print("jmraid_get_raid_port_info failed\n");
+					}
 				}
 				else
 				{
-					print_raid_port_info(&raid_port_info);
+					if (g_print_json) add_raid_port_info(parent, &raid_port_info);
+					else print_raid_port_info(&raid_port_info);
 				}
 				g_print_indent--;
 			}
@@ -431,17 +602,25 @@ void check_disk(const char *disk_name)
 			{
 				if (is_raid_or_spare_disk[i])
 				{
-					print("\n");
-					print("Get SMART info (disk %d) ...\n", i);
-					print("\n");
+					if (!g_print_json) {
+						print("\n");
+						print("Get SMART info (disk %d) ...\n", i);
+						print("\n");
+					}
 					g_print_indent++;
 					if (!jmraid_get_disk_smart_info(&jmraid, i, &disk_smart_info))
 					{
-						print("jmraid_get_disk_smart_info failed\n");
+						if (g_print_json) {
+							fprintf(stderr, "%s\n", "jmraid_get_disk_smart_info failed");
+						}
+						else {
+							print("jmraid_get_disk_smart_info failed\n");
+						}
 					}
 					else
 					{
-						print_disk_smart_info(&disk_smart_info);
+						if (g_print_json) add_disk_smart_info(parent, &disk_smart_info);
+						else print_disk_smart_info(&disk_smart_info);
 					}
 					g_print_indent--;
 				}
@@ -496,8 +675,13 @@ void check_disk(const char *disk_name)
 
 		if (!jmraid_close(&jmraid))
 		{
-			print("\n");
-			print("jmraid_close failed\n");
+			if (g_print_json) {
+				fprintf(stderr, "%s\n", "jmraid_get_disk_smart_info failed");
+			}
+			else {
+				print("\n");
+				print("jmraid_close failed\n");
+			}
 		}
 	}
 	g_print_indent--;
@@ -508,6 +692,7 @@ int main(int argc, char *argv[])
 	int disk_number;
 	int c;
 	char disk_name[32];
+	json_object* root;
 	while ((c = getopt(argc, argv, "j")) != -1) {
 		switch (c) {
 		case 'j':
@@ -519,8 +704,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "?? getopt returned character code 0%o ??\n", c);
 		}
 	}
-
-	print("JMicron RAID info\n");
+	if (!g_print_json) print("JMicron RAID info\n");
 
 	if (optind < argc) {
 		root = json_object_new_object();
@@ -528,16 +712,23 @@ int main(int argc, char *argv[])
 		check_disk(root, disk_name);
 	}
 	else {
+		root = json_object_new_array();
 		for (disk_number = 0; disk_number < 16; disk_number++)
 		{
+			json_object* obj = json_object_new_object();
 #ifdef _WIN32
 			sprintf(disk_name, "\\\\.\\PhysicalDrive%d", disk_number + 1);
 #else
 			sprintf(disk_name, "/dev/sd%c", 'a' + disk_number);
 #endif
-			check_disk(disk_name);
+			check_disk(obj, disk_name);
+			json_object_array_add(root, obj);
 		}
 	}
+	if (g_print_json) {
+		printf("%s\n", json_object_to_json_string(root));
+	}
+	json_object_put(root);
 
 	return 0;
 }
