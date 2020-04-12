@@ -12,3 +12,5 @@ include_directories(../../lib/inc)
 
 add_executable(jmraid src/main.c)
 target_link_libraries(jmraid common ${JSON_LIBRARIES})
+
+install(TARGETS jmraid RUNTIME DESTINATION sbin)
